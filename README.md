@@ -14,13 +14,12 @@
 ## Sankalp
 - _email_: shrivastavs2@macewan.ca
 - _github_: [https://github.com/ConcernedMotley](https://github.com/ConcernedMotley "https://github.com/ConcernedMotley")
-## Tarik
 
+## Tarik
 - _email_: Unalt@mymacewan
 - _github_: [https://github.com/Tunal02](https://github.com/Tunal02 "hhttps://github.com/Tunal02")
 
-# LICENSE
-
+# LICENSE:
 [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/)
 
 Please have a look at the LICENSE.md for more details.
