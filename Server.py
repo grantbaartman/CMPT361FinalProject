@@ -180,14 +180,15 @@ def main():
 
     while True:
         # Accept client connection
-        client_socket, addr = serverSocket.accept()
+        clientSocket, addr = serverSocket.accept()
         pid = os.fork()
 
         if pid == 0:  # Child process
             serverSocket.close()
-            handleClient(client_socket)
+            handleClient(clientSocket)
             break
-
+        # end if statement
+    # end while loop    
     serverSocket.close()
 # end main()
     
