@@ -12,7 +12,7 @@
 - _github_: [https://github.com/grantbaartman](https://github.com/grantbaartman "https://github.com/grantbaartman")
 
 ## Sankalp
-- _email_: shrivastavs2@macewan.ca
+- _email_: shrivastavs2@mymacewan.ca
 - _github_: [https://github.com/ConcernedMotley](https://github.com/ConcernedMotley "https://github.com/ConcernedMotley")
 
 ## Tarik
