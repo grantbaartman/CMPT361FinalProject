@@ -41,13 +41,31 @@ def createEmail():
 # end createEmail()
     
 
-def displayEmail():
+def displayEmail(index):
     '''
     Purpose: a helper function that displays any email's content in the server's
              inbox
-    Parameter: clientSocket - socket object for client communication
+    Parameter: clientSocket - socket object for client communication , Index - used to access a specific email content in the email list
     Return: none
     '''
+
+    #Get the email index from client
+    input(f"Enter the email index you wish to view: {index}")
+
+    #It loops through the database for the index and grab the contents 
+    #Code will go here:
+
+    '''
+    Take the contents and displays it in this format:
+        From: [The source client username who sent the message] \n 
+        To: [The list of destination clients’ usernames separated by “;”] \n 
+        Time and Date: [The time and date of receiving the message]\n
+        Title: [The title of the sent message with maximum length of 100 characters] \n 
+        Content Length: [Number of characters in the content field] \n Content: \n 
+        [message contents with a maximum length of 1000000 characters] 
+    '''
+    print(f"From:{}\n\rTo:{}\n\rTime and Date Received:{}\n\rTitle:{}\n\rContent Length:{}\n\rContent:{}")
+
 # end displayEmail()
 
 
