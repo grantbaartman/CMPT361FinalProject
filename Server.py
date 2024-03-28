@@ -31,7 +31,7 @@ import sys
 # TO DO: COde that loads a file with all client usernames and passwords [DELETE COMMENT ONCE DONE]
 
 
-def createEmail():
+def createEmail(clientSocket):
     '''
     Purpose: a helper function that lets the user create and send an email to
              the server
@@ -41,7 +41,7 @@ def createEmail():
 # end createEmail()
     
 
-def displayEmail():
+def displayEmail(clientSocket):
     '''
     Purpose: a helper function that displays any email's content in the server's
              inbox
@@ -51,7 +51,7 @@ def displayEmail():
 # end displayEmail()
 
 
-def displayInbox():
+def displayInbox(clientSocket):
     '''
     Purpose: a helper function that displays the context of the server's inbox
              to the user
