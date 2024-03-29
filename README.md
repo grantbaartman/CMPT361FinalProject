@@ -16,7 +16,7 @@
 - _github_: [https://github.com/ConcernedMotley](https://github.com/ConcernedMotley "https://github.com/ConcernedMotley")
 
 ## Tarik
-- _email_: Unalt@mymacewan
+- _email_: Unalt@mymacewan.ca
 - _github_: [https://github.com/Tunal02](https://github.com/Tunal02 "hhttps://github.com/Tunal02")
 
 # LICENSE:
