@@ -26,6 +26,7 @@ import socket
 import sys
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
+from datetime import datetime as d
 
 
 def encryptMessage(message, publicKey):
@@ -198,15 +199,75 @@ def saveServerPublicKey(publicKey):
 # TO DO: Code that loads Server.py's private key [DELETE COMMENT ONCE DONE]
 
 
-def createEmail(clientSocket):
+def createEmail(clientSocket,serverPubKey,clientpubkey):
+
     '''
     Purpose: a helper function that lets the user create and send an email to
              the server
     Parameter: clientSocket - socket object for client communication
     Return: none
     '''
-# end createEmail()
+    encrypted_message=encryptMessage("send the email",serverPubKey)
+    clientSocket.send(encrypted_message)
     
+    encrypted_email=clientSocket.recv(4096)
+    decrypted_email=decipherMessage(encrypted_email,clientpubkey)
+    
+    process_email(decrypted_email)
+   
+    clientSocket.sendall(b"Email received by the server.")
+
+
+# end createEmail()
+def process_email(email_object):
+    '''
+    Parameter: The email json object that's sent from the client side
+    purpose: Extract email info, print it to server side, and save the emails to text file 
+    return :none
+    '''
+    destin=''
+    #extract email info
+    sender=email_object["sender"]
+    destination=email_object["destinations"]
+    title=email_object["title"]
+    length=email_object["content_length"]
+    contents=email_object["message_contents"]
+    # The time and date of receiving the message, add  it to the email object
+    timestamp = d.now().strftime("%Y-%m-%d %H:%M:%S")
+    for destinations in destination:
+        destin+=f"{destinations} "
+        
+
+    #print the details of the email 
+    print(f"An email from {sender} is sent to {destin} ")
+    print(f"with a content length of {length} characters.")
+    print(f"Title: {title}")
+    print(f"Content Length: {length}")
+    print(f"Content:\n{contents}")
+    email_object["Time"]=timestamp
+    #added time stamp to the new email object
+
+    for new_des in destination:
+        save_email(sender,new_des,title,email_object)
+        # For each destination send email
+
+def save_email(sender,destination,title,email_object):
+    destin_dir = os.path.join("client_emails", destination)
+    # create a new folder, that contains the users
+    os.makedirs(destin_dir, exist_ok=True)
+
+
+    filename=f"{sender}_{title}.txt"
+    # creates a file  that tracks for each user email
+    added_file=os.path.join(destin_dir,filename)
+    with open(added_file,'w') as file:
+        # write json object to newly created file
+        json.dump(email_object,file)
+
+    print(f"Email has been sent successfully to {destination}\n")
+
+
+
 
 def displayEmail(clientSocket):
     '''
@@ -305,7 +366,7 @@ def handleClient(clientSocket, addr):
 
             if (choice == '1'):
                 # Handle sending email
-                createEmail()
+                createEmail(clientSocket,serverPubKey,clientPubKeys[username])
             elif (choice == '2'):
                 # Handle displaying inbox list
                 displayInbox()
@@ -384,6 +445,6 @@ def main():
     print(">> Closing the datalink. Thank you for using the program")
 # end main()
     
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+#    main()
 # end if statement
