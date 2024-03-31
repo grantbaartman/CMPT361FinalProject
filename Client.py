@@ -22,7 +22,8 @@
 import os
 import socket
 import sys
-
+from datetime import datetime as d
+import json
 
 # TO DO: Code that loads Server's Public key [DELETE COMMENT ONCE DONE]
 
@@ -59,6 +60,7 @@ def authenticateWithServer():
     # get username and password from user input
     username = input(">> Enter your username: ")
     password = input(">> Enter your password: ")
+    
 
     # TO DO: Encrypt the username and password with server's public key [DELETE COMMENT ONCE DONE]
     encryptedData = ""
@@ -72,7 +74,6 @@ def authenticateWithServer():
 
     return clientSocket, symetra
 # end authenticateWithServer()
-    
 
 def main():
     '''
@@ -92,10 +93,15 @@ def main():
             menu = ""
             userChoice = input(menu)
 
+                
+
             # gets, encrypts and sends the user's choice to the server
             # TO DO: Encrypt userChoice with acquired symetra key [DELETE COMMENT ONCE DONE]
             encryptedChoice = ""
             clientSocket.send(encryptedChoice)
+            if(userChoice=='1'):
+                send_email(clientSocket)
+                return
 
             # terminate the connection if the user chooses so
             if (userChoice == '4'):
@@ -109,6 +115,35 @@ def main():
         print(f">> Error: {e}")
     # end try & accept
 # end main()
+        
+def send_email(clientSocket):
+    sender_username = input("Enter your username: ")
+    destination_usernames = input("Enter destination usernames separated by ';': ")
+    destination_usernames = destination_usernames.split(';')
+    email_title = input("Enter email title: ")
+    message_contents = input("Enter message contents: ")
+    content_length = len(message_contents)
+    email_message = {
+        "sender": sender_username,
+        "destinations": destination_usernames,
+        "title": email_title,
+        "content_length": content_length,
+        "message_contents": message_contents
+    }
+
+    # Encrypt email message
+    encrypted_email = encrypt(json.dumps(email_message), sym_key)
+    clientSocket.send(encrypted_email)
+    print("The message is sent to the server.")
+
+
+
+def encrypt(key, data):
+   return 
+
+def decrypt(key, data):
+    return 
+ 
     
 if __name__ == "__main__":
     main()
