@@ -269,14 +269,33 @@ def save_email(sender,destination,title,email_object):
 
 
 
-def displayEmail(clientSocket):
+def displayEmail(clientSocket, serverPubKey, clientpubkey):
     '''
     Purpose: a helper function that displays any email's content in the server's
              inbox
     Parameter: clientSocket - socket object for client communication
     Return: none
     '''
+    # send the client a message
+    encrypted_message=encryptMessage("the server request email index",serverPubKey)
+    clientSocket.send(encrypted_message)
+    
+    # recieve and decrypt the clients message then process req
+    encrypted_email=clientSocket.recv(4096)
+    decrypted_email=decipherMessage(encrypted_email,clientpubkey)
+    
+    get_email(decrypted_email)
+   
+    clientSocket.sendall(b"Email received by the server.")
 # end displayEmail()
+
+def get_email(email_request):
+    """
+    Purpose: Process the email request then send the client the email
+    Parameter: email_request
+    Return: none
+    """
+    pass
 
 
 def displayInbox(clientSocket):

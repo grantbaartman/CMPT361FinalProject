@@ -102,6 +102,10 @@ def main():
             if(userChoice=='1'):
                 send_email(clientSocket)
                 return
+            
+            if (userChoice == '3'):
+                view_email(clientSocket)
+                return
 
             # terminate the connection if the user chooses so
             if (userChoice == '4'):
@@ -133,6 +137,30 @@ def send_email(clientSocket):
 
     # Encrypt email message
     encrypted_email = encrypt(json.dumps(email_message), sym_key)
+    clientSocket.send(encrypted_email)
+    print("The message is sent to the server.")
+
+def view_email(clientSocket):
+
+    client_username = input("Enter your username: ")
+    validIndex = False
+
+    while not validIndex:
+        email_index = input("Enter the email index you wish to view: ")
+
+        try:
+            email_index = int(email_index)
+            validIndex = True
+        except:
+            continue
+    
+    email_rerquest = {
+        "sender": client_username,
+        "emailIndex": email_index
+    }
+    
+    # Encrypt email message
+    encrypted_email = encrypt(json.dumps(email_rerquest), sym_key)
     clientSocket.send(encrypted_email)
     print("The message is sent to the server.")
 
