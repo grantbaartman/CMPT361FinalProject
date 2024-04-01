@@ -159,10 +159,14 @@ def view_email(clientSocket):
         "emailIndex": email_index
     }
     
-    # Encrypt email message
+    # Encrypt email message and send it
     encrypted_email = encrypt(json.dumps(email_rerquest), sym_key)
     clientSocket.send(encrypted_email)
-    print("The message is sent to the server.")
+
+    # recieve and decrypt the clients message then process req
+    encrypted_email=clientSocket.recv(4096)
+
+    # TODO: display email
 
 
 

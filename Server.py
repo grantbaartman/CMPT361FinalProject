@@ -284,18 +284,37 @@ def displayEmail(clientSocket, serverPubKey, clientpubkey):
     encrypted_email=clientSocket.recv(4096)
     decrypted_email=decipherMessage(encrypted_email,clientpubkey)
     
-    get_email(decrypted_email)
-   
-    clientSocket.sendall(b"Email received by the server.")
+    email_view = get_email(decrypted_email)
+    encrypted_message = encrypted_message(email_view, serverPubKey)
+    clientSocket.send(encrypted_email)
 # end displayEmail()
 
 def get_email(email_request):
     """
-    Purpose: Process the email request then send the client the email
+    Purpose: Process the email request then send the client the email, assumers
+             correct email_request contains valid information.
     Parameter: email_request
     Return: none
     """
-    pass
+
+    client_box = email_request["sender"]
+    email_index = email_request["emailIndex"]
+
+    # need the clients username, and email index
+    destin_dir = os.path.join("client_emails", client_box)
+    
+    # List all .txt files in the user's directory
+    email_files = \
+        [file for file in os.listdir(destin_dir) if file.endswith('.txt')]
+    
+    selected_email = email_files[email_index - 1]  # correct index for file
+    email_path = os.path.join(destin_dir, selected_email)
+
+    with open(email_path, 'r') as email:
+        email_data = json.load(email)
+
+    return email_data
+    
 
 
 def displayInbox(clientSocket):
