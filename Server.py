@@ -281,7 +281,6 @@ def startCreatingUserKeys():
     print(">> Public and private keys saved as .pem files.")
 # end startCreatingUserKeys()
 
-
 def checkPemFilesExist():
     '''
     Purpose: Check if .pem files exist for each user
@@ -496,7 +495,6 @@ def handleClient(clientSocket, addr):
                addr - client address
     Return: none
     '''
-    print(" TEST MESSAGE: IM HERE")
 
     # prints the IP address of the client trying to connect
     hostname = socket.gethostname()
@@ -504,7 +502,6 @@ def handleClient(clientSocket, addr):
     
     userIP = clientSocket.recv(1024).decode()
 
-    print(" TEST MESSAGE: IM HERE 2")
 
     # checks if the user correctly typed the correct local IP address 
     if (userIP == address) or (userIP == "localhost"):
@@ -529,7 +526,6 @@ def handleClient(clientSocket, addr):
     print(" TEST MESSAGE: IM HERE AFTER GENERATING SERVER PUBLIC KEY")
     clientPubKeys = loadClientPublicKey()
 
-    print(" TEST MESSAGE: IM HERE AFTER GENERATING PUBLIC KEYS")
 
     # sending welcome message and receiving user's credentials
     serverWelcomeMessage = ">>> Welcome to the Email Server <<<\n"
@@ -539,7 +535,6 @@ def handleClient(clientSocket, addr):
     username = clientSocket.recv(1024).decode()
     password = clientSocket.recv(1024).decode()
 
-    print(" TEST MESSAGE: IM HERE AFTER RECEIVING USERNAME AND PASSWORD")
 
     # checks if the user is authenticated by calling a helper function
     userINFO = loadUserInfo()
@@ -589,13 +584,11 @@ def handleClient(clientSocket, addr):
             # a string that holds the menu
             menu = ">> Select an operation:\n\t1) Create and send an email\n\t2) Display the inbox list\n\t3) Display the email contents\n\t4) Terminate the connection\n>> User's choice: "
 
-            # TO DO: Encrypt 'menu' and send it to Client.py [DELETE COMMENT ONCE DONE]
             encryptedMenu = ""
             clientSocket.send(encryptedMenu)
 
             # receives an encrypted choice from the client
             encryptedChoice = clientSocket.recv(1024)
-            # TO DO: Decrypt 'encryptedChoice' and process it [DELETE COMMENT ONCE DONE]
             choice = ""
 
             if (choice == '1'):
