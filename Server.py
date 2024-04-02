@@ -149,20 +149,35 @@ def authenticateUser(username, password):
 # end authenticateUser()
 
 
-def loadClientPublicKey(clientPublicKeyFile):
+def loadClientPublicKey():
     '''
     Purpose: Load a private key from a file
-    Parameter: clientPublicKeyFile - the file path of the private key
-    Return: clientPublicKeyFile - the loaded private key object
+    Parameter: none
+    Return: clientPublicKeys - a dictionary that holds the the public keys of
+                               all known users
     '''
-    try:
-        with open(clientPublicKeyFile, "r") as file:
-            publicKey = RSA.import_key(file.read())
-        return publicKey
-    except Exception as e:
-        print(f">> Error loading public key from file {clientPublicKeyFile}: {e}")
-        return None
-    # end try & accept
+    # initialize a dictionary to hold the information
+    clientPublicKeys = {}
+    # saves information of known clients and their passwords
+    users = loadUserInfo()
+
+    # loops until every client is analyzed
+    for username in users:
+        # concatenates the user's name to the filepath
+        publicKeyPath = f"{username}_public.pem"
+
+        if os.path.exists(publicKeyPath):
+            try:
+                with open(publicKeyPath, 'r') as f:
+                    clientPublicKeys[username] = RSA.import_key(f.read())
+                # end with
+            except (FileNotFoundError, ValueError) as e:
+                print(f">> Error loading public key for user '{username}': {e}")
+            # end try & accept
+        else:
+            print(f"\t>> Public key file not found for user '{username}'.")
+        # end if statement
+    return clientPublicKeys
 # end loadClientPublicKey()
 
 
