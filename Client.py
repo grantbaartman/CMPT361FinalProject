@@ -44,13 +44,14 @@ def loadServerPublicKey():
     except Exception as e:
         print(f"Error loading server's public key from file: {e}")
         return None
+# end loadServerPublicKey()
+    
 
-# TO DO: COde that loads the Client's Public and Private keys (?) [DELETE COMMENT ONCE DONE]
 def loadClientPublicKey(clientPublicKeyFile):
     '''
     Purpose: Load a private key from a file
-    Parameter: privateKeyFile - the file path of the private key
-    Return: privateKey - the loaded private key object
+    Parameter: clientPublicKeyFile - the file path of the private key
+    Return: clientPublicKeyFile - the loaded private key object
     '''
     try:
         with open(clientPublicKeyFile, "r") as file:
@@ -59,7 +60,10 @@ def loadClientPublicKey(clientPublicKeyFile):
     except Exception as e:
         print(f"Error loading public key from file {clientPublicKeyFile}: {e}")
         return None
+    # end try & accept
+# end loadClientPublicKey()
     
+
 def loadClientPrivateKey(clientPrivateKeyFile):
     '''
     Purpose: Load a private key from a file
@@ -73,12 +77,11 @@ def loadClientPrivateKey(clientPrivateKeyFile):
     except Exception as e:
         print(f"Error loading private key from file {clientPrivateKeyFile}: {e}")
         return None
-    
-# get server IP address fronm user
+    # end try & accept
+# end lodClientPrivateKey()
 
 
 
-    
 def decryptSymmetricKey(encryptedSymmetricKey, clientPrivateKey):
     '''
     Purpose: Decrypt the encrypted symmetric key received from the server
@@ -93,6 +96,8 @@ def decryptSymmetricKey(encryptedSymmetricKey, clientPrivateKey):
     symmetricKey = cipher_rsa.decrypt(encryptedSymmetricKey)
 
     return symmetricKey
+# end decruptSymmetricKey()
+
 
 def authenticateWithServer():
     '''
@@ -119,14 +124,16 @@ def authenticateWithServer():
         sys.exit(1)
     # end try & except()
 
-    serverIP = input(">> Enter the server's IP address: ")
-    clientSocket.send(serverIP.encode())
+    # asks the user for the IP address
+    userServerIP = input(">> Enter the server's IP address: ")
+    clientSocket.send(userServerIP.encode())
 
-    #If the IP address entered is correct
-    IP = clientSocket.recv(1024).decode()
-    if IP == "Wrong IP Address":
+    # If the IP address entered is incorrect
+    userClientIP = clientSocket.recv(1024).decode()
+    if (userClientIP == ">> Wrong IP Address"):
         clientSocket.close()
-
+    # end if statement
+        
     # get username and password from user input
     username = input(">> Enter your username: ")
     password = input(">> Enter your password: ")
@@ -156,52 +163,9 @@ def authenticateWithServer():
 
     return clientSocket, sym_key
 # end authenticateWithServer()
+     
 
-def main():
-    '''
-    Purpose: the main function that runs the server-side of the secure mail 
-             transfer protocol and its available functions
-    Parameter: none
-    Return: none
-    '''
-    try:
-        # call a helper function to authenticate to the server
-    
-        clientSocket, sym_key = authenticateWithServer()
-
-        while True:
-            # receive the  server's menu options
-            encryptedMenu = clientSocket.recv(1024)
-            menu = decrypt(encryptedMenu, sym_key)
-            userChoice = input(menu)
-
-        
-            # gets, encrypts and sends the user's choice to the server
-            # TO DO: Encrypt userChoice with acquired symetra key [DELETE COMMENT ONCE DONE]
-            encryptedChoice = encrypt(userChoice, sym_key)
-            clientSocket.send(encryptedChoice)
-            if(userChoice=='1'):
-                send_email(clientSocket, sym_key)
-                return
-            
-            if (userChoice == '3'):
-                view_email(clientSocket)
-                return
-
-            # terminate the connection if the user chooses so
-            if (userChoice == '4'):
-                break
-            # end if statement
-        # end while loop
-        
-        # closes the connection to the server
-        clientSocket.close()
-    except Exception as e:
-        print(f">> Error: {e}")
-    # end try & accept
-# end main()
-        
-def send_email(clientSocket, sym_key):
+def sendEmail(clientSocket, sym_key):
     sender_username = input("Enter your username: ")
     destination_usernames = input("Enter destination usernames separated by ';': ")
     destination_usernames = destination_usernames.split(';')
@@ -220,8 +184,10 @@ def send_email(clientSocket, sym_key):
     encrypted_email = encrypt(json.dumps(email_message), sym_key)
     clientSocket.send(encrypted_email)
     print("The message is sent to the server.")
+# end sendEmail()
+    
 
-def view_email(clientSocket, sym_key):
+def viewEmail(clientSocket, sym_key):
 
     client_username = input("Enter your username: ")
     validIndex = False
@@ -248,6 +214,8 @@ def view_email(clientSocket, sym_key):
     encrypted_email=clientSocket.recv(4096)
 
     # TODO: display email
+# end viewEmail()
+    
 
 def displayInbox(clientSocket, sym_key):
     '''
@@ -273,7 +241,7 @@ def displayInbox(clientSocket, sym_key):
             print("Inbox is empty.")
     except Exception as e:
         print("Error:", e)
-
+# end displayInbox()
 
 
 def encryptSymKey(data, publicKey):
@@ -290,7 +258,8 @@ def encryptSymKey(data, publicKey):
     except Exception as e:
         print(f"Error encrypting data: {e}")
         return None
-    
+# end encryptSymKey()
+
 
 def encrypt(data, sym_key):
     '''
@@ -317,7 +286,8 @@ def encrypt(data, sym_key):
     except Exception as e:
         print(f"Error encrypting data: {e}")
         return None
-    
+# end encrypt()
+      
 
 def decrypt(data, sym_key):
     '''
@@ -339,8 +309,51 @@ def decrypt(data, sym_key):
     except Exception as e:
         print(f"Error decrypting data: {e}")
         return None
- 
+    # end try & accept
+# end decrypt()
+
+
+def main():
+    '''
+    Purpose: the main function that runs the server-side of the secure mail 
+             transfer protocol and its available functions
+    Parameter: none
+    Return: none
+    '''
+    try:
+        # call a helper function to authenticate to the server
     
+        clientSocket, sym_key = authenticateWithServer()
+
+        while True:
+            # receive the  server's menu options
+            encryptedMenu = clientSocket.recv(1024)
+            menu = decrypt(encryptedMenu, sym_key)
+            userChoice = input(menu)
+
+            # gets, encrypts and sends the user's choice to the server
+            # TO DO: Encrypt userChoice with acquired symetra key [DELETE COMMENT ONCE DONE]
+            encryptedChoice = encrypt(userChoice, sym_key)
+            clientSocket.send(encryptedChoice)
+            if(userChoice=='1'):
+                sendEmail(clientSocket, sym_key)
+                return
+            elif(userChoice == '3'):
+                viewEmail(clientSocket)
+                return
+            # terminate the connection if the user chooses so
+            elif (userChoice == '4'):
+                break
+            # end if statement
+        # end while loop
+        
+        # closes the connection to the server
+        clientSocket.close()
+    except Exception as e:
+        print(f">> Error: {e}")
+    # end try & accept
+# end main()
+        
 if __name__ == "__main__":
     main()
 # end if statement
