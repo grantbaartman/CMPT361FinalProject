@@ -31,7 +31,7 @@ from Crypto.Util.Padding import pad
 from Crypto.Random import get_random_bytes
 import json
 
-
+# TO DO: Code that loads Server's Public key [DELETE COMMENT ONCE DONE]
 def loadServerPublicKey():
     '''
     Purpose: Load the server's public key from file server_public.pem
@@ -45,7 +45,7 @@ def loadServerPublicKey():
         print(f"Error loading server's public key from file: {e}")
         return None
 
-
+# TO DO: COde that loads the Client's Public and Private keys (?) [DELETE COMMENT ONCE DONE]
 def loadClientPublicKey(clientPublicKeyFile):
     '''
     Purpose: Load a private key from a file
@@ -75,7 +75,7 @@ def loadClientPrivateKey(clientPrivateKeyFile):
         return None
     
 # get server IP address fronm user
-serverIP = input(">> Enter the server's IP address: ")
+
 
 
     
@@ -119,6 +119,14 @@ def authenticateWithServer():
         sys.exit(1)
     # end try & except()
 
+    serverIP = input(">> Enter the server's IP address: ")
+    clientSocket.send(serverIP.encode())
+
+    #If the IP address entered is correct
+    IP = clientSocket.recv(1024).decode()
+    if IP == "Wrong IP Address":
+        clientSocket.close()
+
     # get username and password from user input
     username = input(">> Enter your username: ")
     password = input(">> Enter your password: ")
@@ -127,8 +135,8 @@ def authenticateWithServer():
     serverPubKey = loadServerPublicKey()
 
     # Encrypt username and password
-    encryptedUsername = encrypt(username, serverPubKey)
-    encryptedPassword = encrypt(password, serverPubKey)
+    encryptedUsername = encryptSymKey(username, serverPubKey)
+    encryptedPassword = encryptSymKey(password, serverPubKey)
 
     # Send encrypted username and password to server
     clientSocket.send(encryptedUsername)
@@ -141,10 +149,9 @@ def authenticateWithServer():
 
     sym_key = decryptSymmetricKey(encryptedSymetra, clientPrivateKey)
 
-    okMessage = "OK"
 
-    encryptedMessage = encrypt(okMessage)
-    clientSocket.send(encryptedMessage)
+    #encryptedMessage = encrypt('OK', sym_key)
+    #clientSocket.send(encryptedMessage)
     
 
     return clientSocket, sym_key
@@ -159,6 +166,7 @@ def main():
     '''
     try:
         # call a helper function to authenticate to the server
+    
         clientSocket, sym_key = authenticateWithServer()
 
         while True:

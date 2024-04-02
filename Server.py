@@ -398,7 +398,19 @@ def handleClient(clientSocket, addr):
     Return: none
     '''
     # prints the IP address of the client trying to connect
-    print(f">> Connection established with {addr}")
+    hostname = socket.gethostname()
+    address = socket.gethostbyname(hostname)
+    
+    IP = clientSocket.recv(1024).decode()
+
+    if IP == address:
+        print(f">> Connection established with {addr}")
+    else:
+        clientSocket.send("Wrong IP Address".encode())
+        clientSocket.close()
+
+
+    
 
     # load server's public key and client keys
     serverPubKey = loadServerPublicKey()
@@ -556,6 +568,6 @@ def main():
     print(">> Closing the datalink. Thank you for using the program")
 # end main()
     
-#if __name__ == "__main__":
-#    main()
+if __name__ == "__main__":
+    main()
 # end if statement
