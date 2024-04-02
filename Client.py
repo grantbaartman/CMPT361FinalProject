@@ -23,14 +23,76 @@ import os
 import socket
 import sys
 from datetime import datetime as d
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+from Crypto.Util.Padding import pad
+from Crypto.Random import get_random_bytes
 import json
 
 # TO DO: Code that loads Server's Public key [DELETE COMMENT ONCE DONE]
+def loadServerPublicKey():
+    '''
+    Purpose: Load the server's public key from file server_public.pem
+    Return: serverPublicKey - the loaded server's public key object
+    '''
+    try:
+        with open("server_public.pem", "r") as file:
+            serverPublicKey = RSA.import_key(file.read())
+        return serverPublicKey
+    except Exception as e:
+        print(f"Error loading server's public key from file: {e}")
+        return None
 
 # TO DO: COde that loads the Client's Public and Private keys (?) [DELETE COMMENT ONCE DONE]
-
+def loadClientPublicKey(clientPublicKeyFile):
+    '''
+    Purpose: Load a private key from a file
+    Parameter: privateKeyFile - the file path of the private key
+    Return: privateKey - the loaded private key object
+    '''
+    try:
+        with open(clientPublicKeyFile, "r") as file:
+            publicKey = RSA.import_key(file.read())
+        return publicKey
+    except Exception as e:
+        print(f"Error loading public key from file {clientPublicKeyFile}: {e}")
+        return None
+    
+def loadClientPrivateKey(clientPrivateKeyFile):
+    '''
+    Purpose: Load a private key from a file
+    Parameter: privateKeyFile - the file path of the private key
+    Return: privateKey - the loaded private key object
+    '''
+    try:
+        with open(clientPrivateKeyFile, "r") as file:
+            privateKey = RSA.import_key(file.read())
+        return privateKey
+    except Exception as e:
+        print(f"Error loading private key from file {clientPrivateKeyFile}: {e}")
+        return None
+    
 # get server IP address fronm user
-serverIP = input(">> Enter the server's IP address: ")
+
+
+
+    
+def decryptSymmetricKey(encryptedSymmetricKey, clientPrivateKey):
+    '''
+    Purpose: Decrypt the encrypted symmetric key received from the server
+    Parameter: encryptedSymmetricKey - The encrypted symmetric key
+               clientPrivateKey - The client's private key
+    Return: symmetricKey - The decrypted symmetric key
+    '''
+    # Create a cipher object for decryption
+    cipher_rsa = PKCS1_OAEP.new(clientPrivateKey)
+
+    # Decrypt the symmetric key
+    symmetricKey = cipher_rsa.decrypt(encryptedSymmetricKey)
+
+    return symmetricKey
 
 def authenticateWithServer():
     '''
@@ -57,22 +119,42 @@ def authenticateWithServer():
         sys.exit(1)
     # end try & except()
 
+    serverIP = input(">> Enter the server's IP address: ")
+    clientSocket.send(serverIP.encode())
+
+    #If the IP address entered is correct
+    IP = clientSocket.recv(1024).decode()
+    if IP == "Wrong IP Address":
+        clientSocket.close()
+
     # get username and password from user input
     username = input(">> Enter your username: ")
     password = input(">> Enter your password: ")
     
+    # Load server's public key
+    serverPubKey = loadServerPublicKey()
 
-    # TO DO: Encrypt the username and password with server's public key [DELETE COMMENT ONCE DONE]
-    encryptedData = ""
-    clientSocket.send(encryptedData)
+    # Encrypt username and password
+    encryptedUsername = encryptSymKey(username, serverPubKey)
+    encryptedPassword = encryptSymKey(password, serverPubKey)
 
+    # Send encrypted username and password to server
+    clientSocket.send(encryptedUsername)
+    clientSocket.send(encryptedPassword)
 
     # receive symmetric key from server and decrypt it to 'symetra'
     encryptedSymetra = clientSocket.recv(1024)
-    # TO DO: Decrypt the encryptedSymetra with client's private key [DELETE COMMENT ONCE DONE]
-    symetra = ""
+    clientPrivateKeyFile = f"{username}_private.pem"
+    clientPrivateKey = loadClientPrivateKey(clientPrivateKeyFile)
 
-    return clientSocket, symetra
+    sym_key = decryptSymmetricKey(encryptedSymetra, clientPrivateKey)
+
+
+    #encryptedMessage = encrypt('OK', sym_key)
+    #clientSocket.send(encryptedMessage)
+    
+
+    return clientSocket, sym_key
 # end authenticateWithServer()
 
 def main():
@@ -84,23 +166,26 @@ def main():
     '''
     try:
         # call a helper function to authenticate to the server
-        clientSocket, symetra = authenticateWithServer()
+    
+        clientSocket, sym_key = authenticateWithServer()
 
         while True:
             # receive the  server's menu options
             encryptedMenu = clientSocket.recv(1024)
-            # TO DO: Decrypt the encryptedMenu with the acquired symetra key [DELETE COMMENT ONCE DONE]
-            menu = ""
+            menu = decrypt(encryptedMenu, sym_key)
             userChoice = input(menu)
 
-                
-
+        
             # gets, encrypts and sends the user's choice to the server
             # TO DO: Encrypt userChoice with acquired symetra key [DELETE COMMENT ONCE DONE]
-            encryptedChoice = ""
+            encryptedChoice = encrypt(userChoice, sym_key)
             clientSocket.send(encryptedChoice)
             if(userChoice=='1'):
-                send_email(clientSocket)
+                send_email(clientSocket, sym_key)
+                return
+            
+            if (userChoice == '3'):
+                view_email(clientSocket)
                 return
 
             # terminate the connection if the user chooses so
@@ -116,7 +201,7 @@ def main():
     # end try & accept
 # end main()
         
-def send_email(clientSocket):
+def send_email(clientSocket, sym_key):
     sender_username = input("Enter your username: ")
     destination_usernames = input("Enter destination usernames separated by ';': ")
     destination_usernames = destination_usernames.split(';')
@@ -136,13 +221,124 @@ def send_email(clientSocket):
     clientSocket.send(encrypted_email)
     print("The message is sent to the server.")
 
+def view_email(clientSocket, sym_key):
+
+    client_username = input("Enter your username: ")
+    validIndex = False
+
+    while not validIndex:
+        email_index = input("Enter the email index you wish to view: ")
+
+        try:
+            email_index = int(email_index)
+            validIndex = True
+        except:
+            continue
+    
+    email_rerquest = {
+        "sender": client_username,
+        "emailIndex": email_index
+    }
+    
+    # Encrypt email message and send it
+    encrypted_email = encrypt(json.dumps(email_rerquest), sym_key)
+    clientSocket.send(encrypted_email)
+
+    # recieve and decrypt the clients message then process req
+    encrypted_email=clientSocket.recv(4096)
+
+    # TODO: display email
+
+def displayInbox(clientSocket, sym_key):
+    '''
+    Purpose: Receive and display inbox emails' information from the server
+    Parameter: clientSocket - socket object for client communication
+               sym_key - symmetric key for decryption
+    Return: none
+    '''
+    try:
+        # Receive and decrypt inbox email information from the server
+        info = clientSocket.recv(1024)
+        inbox_info = decrypt(info, sym_key)
+
+        # Convert the decrypted JSON string back to a Python list of dictionaries
+        inbox_emails = json.loads(inbox_info)
+
+        # Display inbox email information
+        if inbox_emails:
+            print("Inbox emails:")
+            for email in inbox_emails:
+                print(f"Index: {email['index']}, Sender: {email['sending_client']}, Date/Time: {email['date_time']}, Title: {email['title']}")
+        else:
+            print("Inbox is empty.")
+    except Exception as e:
+        print("Error:", e)
 
 
-def encrypt(key, data):
-   return 
 
-def decrypt(key, data):
-    return 
+def encryptSymKey(data, publicKey):
+    '''
+    Purpose: Encrypt data using RSA public key
+    Parameters: data - the data to be encrypted
+                publicKey - the RSA public key object
+    Return: encryptedData - the encrypted data
+    '''
+    try:
+        cipher = PKCS1_OAEP.new(publicKey)
+        encryptedData = cipher.encrypt(data.encode())
+        return encryptedData
+    except Exception as e:
+        print(f"Error encrypting data: {e}")
+        return None
+    
+
+def encrypt(data, sym_key):
+    '''
+    Purpose: Encrypt data using AES symmetric key
+    Parameters: data - the data to be encrypted
+                sym_key - the symmetric key
+    Return: encryptedData - the encrypted data
+    '''
+    try:
+        # Generate a random initialization vector (IV)
+        iv = get_random_bytes(AES.block_size)
+
+        # Create AES cipher object
+        cipher = AES.new(sym_key, AES.MODE_CBC, iv)
+
+        # Pad the data to be multiple of 16 bytes (AES block size)
+        padded_data = pad(data.encode(), AES.block_size)
+
+        # Encrypt the data
+        encrypted_data = cipher.encrypt(padded_data)
+
+        # Return IV + encrypted data
+        return iv + encrypted_data
+    except Exception as e:
+        print(f"Error encrypting data: {e}")
+        return None
+    
+
+def decrypt(data, sym_key):
+    '''
+    Purpose: Decrypt data using AES symmetric key
+    Parameters: data - the data to be decrypted
+                sym_key - the AES symmetric key
+    Return: decryptedData - the decrypted data
+    '''
+    try:
+        # Initialize AES cipher in CBC mode with sym_key
+        cipher = AES.new(sym_key, AES.MODE_CBC, iv=data[:AES.block_size])
+
+        # Decrypt the data
+        decryptedData = cipher.decrypt(data[AES.block_size:])
+        
+        # Remove padding
+        decryptedData = unpad(decryptedData, AES.block_size)
+        return decryptedData.decode()
+    except Exception as e:
+        print(f"Error decrypting data: {e}")
+        return None
  
     
 if __name__ == "__main__":
