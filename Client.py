@@ -31,7 +31,6 @@ from Crypto.Util.Padding import pad
 from Crypto.Random import get_random_bytes
 import json
 
-# TO DO: Code that loads Server's Public key [DELETE COMMENT ONCE DONE]
 def loadServerPublicKey():
     '''
     Purpose: Load the server's public key from file server_public.pem
@@ -44,6 +43,7 @@ def loadServerPublicKey():
     except Exception as e:
         print(f"Error loading server's public key from file: {e}")
         return None
+    # end try & accept
 # end loadServerPublicKey()
     
 
@@ -81,7 +81,26 @@ def loadClientPrivateKey(clientPrivateKeyFile):
 # end lodClientPrivateKey()
 
 
-def decryptSymmetricKey(encryptedSymmetricKey, clientPrivateKey):
+def encrypt(data, publicKey):
+    '''
+    Purpose: Encrypt data using RSA public key
+    Parameters: data - the data to be encrypted
+                publicKey - the RSA public key object
+    Return: encryptedData - the encrypted data
+    '''
+    try:
+        cipher = PKCS1_OAEP.new(publicKey)
+        encryptedData = cipher.encrypt(data.encode())
+        return encryptedData
+    except FileNotFoundError:
+        print(f"Error: Public key not found.")
+    except Exception as e:
+        print(f">> Error encrypting data: {e}")
+        return None
+# end encryptSymKey()
+
+
+def decrypt(encryptedSymmetricKey, clientPrivateKey):
     '''
     Purpose: Decrypt the encrypted symmetric key received from the server
     Parameter: encryptedSymmetricKey - The encrypted symmetric key
@@ -98,71 +117,57 @@ def decryptSymmetricKey(encryptedSymmetricKey, clientPrivateKey):
 # end decruptSymmetricKey()
 
 
-def authenticateWithServer():
+def encryptWithSymKey(data, sym_key):
     '''
-    Purpose: a helper function that tries to connect and authenticate the user
-             to the sercure Email server
-    Parameter: none
-    Return: clientSocket - the vital connection to the server
-            symetra - the key that can decrypt encrypted messages from the server
+    Purpose: Encrypt data using AES symmetric key
+    Parameters: data - the data to be encrypted
+                sym_key - the symmetric key
+    Return: encryptedData - the encrypted data
     '''
-    # create a client socket that useing IPv4 and TCP protocols 
     try:
-        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    except socket.error as e:
-        print(">> Error in client socket creation: ",e)
-        sys.exit(1)    
-    # end try & except
+        # Generate a random initialization vector (IV)
+        iv = get_random_bytes(AES.block_size)
 
+        # Create AES cipher object
+        cipher = AES.new(sym_key, AES.MODE_CBC, iv)
+
+        # Pad the data to be multiple of 16 bytes (AES block size)
+        padded_data = pad(data.encode(), AES.block_size)
+
+        # Encrypt the data
+        encrypted_data = cipher.encrypt(padded_data)
+
+        # Return IV + encrypted data
+        return iv + encrypted_data
+    except Exception as e:
+        print(f"Error encrypting data: {e}")
+        return None
+# end encrypt()
+      
+
+def decryptWithSymKey(data, sym_key):
+    '''
+    Purpose: Decrypt data using AES symmetric key
+    Parameters: data - the data to be decrypted
+                sym_key - the AES symmetric key
+    Return: decryptedData - the decrypted data
+    '''
     try:
-        # client tries to connect with the server
-        clientSocket.connect(("localhost", 13000))
-    except socket.error as e:
-        print(">> An error occured in the client-side:'", e)
-        clientSocket.close()
-        sys.exit(1)
-    # end try & except()
+        # Initialize AES cipher in CBC mode with sym_key
+        cipher = AES.new(sym_key, AES.MODE_CBC, iv=data[:AES.block_size])
 
-    # asks the user for the IP address
-    userServerIP = input(">> Enter the server's IP address: ")
-    clientSocket.send(userServerIP.encode())
-
-    # If the IP address entered is incorrect
-    userClientIP = clientSocket.recv(1024).decode()
-    if (userClientIP == ">> Wrong IP Address"):
-        clientSocket.close()
-    # end if statement
+        # Decrypt the data
+        decryptedData = cipher.decrypt(data[AES.block_size:])
         
-    # get username and password from user input
-    username = input(">> Enter your username: ")
-    password = input(">> Enter your password: ")
-    
-    # Load server's public key
-    serverPubKey = loadServerPublicKey()
+        # Remove padding
+        decryptedData = unpad(decryptedData, AES.block_size)
+        return decryptedData.decode()
+    except Exception as e:
+        print(f"Error decrypting data: {e}")
+        return None
+    # end try & accept
+# end decrypt()
 
-    # Encrypt username and password
-    encryptedUsername = encryptSymKey(username, serverPubKey)
-    encryptedPassword = encryptSymKey(password, serverPubKey)
-
-    # Send encrypted username and password to server
-    clientSocket.send(encryptedUsername)
-    clientSocket.send(encryptedPassword)
-
-    # receive symmetric key from server and decrypt it to 'symetra'
-    encryptedSymetra = clientSocket.recv(1024)
-    clientPrivateKeyFile = f"{username}_private.pem"
-    clientPrivateKey = loadClientPrivateKey(clientPrivateKeyFile)
-
-    sym_key = decryptSymmetricKey(encryptedSymetra, clientPrivateKey)
-
-
-    #encryptedMessage = encrypt('OK', sym_key)
-    #clientSocket.send(encryptedMessage)
-    
-
-    return clientSocket, sym_key
-# end authenticateWithServer()
-     
 
 def sendEmail(clientSocket, sym_key):
     sender_username = input("Enter your username: ")
@@ -242,73 +247,80 @@ def displayInbox(clientSocket, sym_key):
 # end displayInbox()
 
 
-def encryptSymKey(data, publicKey):
+def authenticateWithServer():
     '''
-    Purpose: Encrypt data using RSA public key
-    Parameters: data - the data to be encrypted
-                publicKey - the RSA public key object
-    Return: encryptedData - the encrypted data
+    Purpose: a helper function that tries to connect and authenticate the user
+             to the sercure Email server
+    Parameter: none
+    Return: clientSocket - the vital connection to the server
+            symetra - the key that can decrypt encrypted messages from the server
     '''
+    # create a client socket that useing IPv4 and TCP protocols 
     try:
-        cipher = PKCS1_OAEP.new(publicKey)
-        encryptedData = cipher.encrypt(data.encode())
-        return encryptedData
-    except Exception as e:
-        print(f"Error encrypting data: {e}")
-        return None
-# end encryptSymKey()
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error as e:
+        print(">> Error in client socket creation: ",e)
+        sys.exit(1)    
+    # end try & except
 
-
-def encrypt(data, sym_key):
-    '''
-    Purpose: Encrypt data using AES symmetric key
-    Parameters: data - the data to be encrypted
-                sym_key - the symmetric key
-    Return: encryptedData - the encrypted data
-    '''
     try:
-        # Generate a random initialization vector (IV)
-        iv = get_random_bytes(AES.block_size)
+        # client tries to connect with the server
+        clientSocket.connect(("localhost", 13000))
+    except socket.error as e:
+        print(">> An error occured in the client-side:'", e)
+        clientSocket.close()
+        sys.exit(1)
+    # end try & except()
 
-        # Create AES cipher object
-        cipher = AES.new(sym_key, AES.MODE_CBC, iv)
+    # asks the user for the IP address
+    userServerIP = input(">> Enter the server's IP address: ")
+    clientSocket.send(userServerIP.encode())
 
-        # Pad the data to be multiple of 16 bytes (AES block size)
-        padded_data = pad(data.encode(), AES.block_size)
-
-        # Encrypt the data
-        encrypted_data = cipher.encrypt(padded_data)
-
-        # Return IV + encrypted data
-        return iv + encrypted_data
-    except Exception as e:
-        print(f"Error encrypting data: {e}")
-        return None
-# end encrypt()
-      
-
-def decrypt(data, sym_key):
-    '''
-    Purpose: Decrypt data using AES symmetric key
-    Parameters: data - the data to be decrypted
-                sym_key - the AES symmetric key
-    Return: decryptedData - the decrypted data
-    '''
-    try:
-        # Initialize AES cipher in CBC mode with sym_key
-        cipher = AES.new(sym_key, AES.MODE_CBC, iv=data[:AES.block_size])
-
-        # Decrypt the data
-        decryptedData = cipher.decrypt(data[AES.block_size:])
+    # If the IP address entered is incorrect
+    userClientIP = clientSocket.recv(1024).decode()
+    if (userClientIP == ">> Wrong IP Address"):
+        print(">> Wrong IP Address. Closing connection.")
+        clientSocket.close()
+        sys.exit(1)
+    else:
+        print(userClientIP)
+    # end if statement
         
-        # Remove padding
-        decryptedData = unpad(decryptedData, AES.block_size)
-        return decryptedData.decode()
-    except Exception as e:
-        print(f"Error decrypting data: {e}")
-        return None
-    # end try & accept
-# end decrypt()
+    # get username and password from user input
+    username = input("\n>> Enter your username: ")
+    password = input(">> Enter your password: ")
+    
+    # Load server's public key
+    serverPubKey = loadServerPublicKey()
+
+    # Encrypt username and password
+    encryptedUsername = encrypt(username, serverPubKey)
+    encryptedPassword = encrypt(password, serverPubKey)
+
+    # Send encrypted username and password to server
+    clientSocket.send(encryptedUsername)
+    clientSocket.send(encryptedPassword)
+
+    # receiving data from Server.py for a welcome message
+    authenticationMSG = clientSocket.recv(1024).decode()
+    if (authenticationMSG == ">> Authentication failed!"):
+        print(">> Authentication has failed! Closing connection.")
+        clientSocket.close()
+        sys.exit(1)
+    # end if statement
+        
+    # receive symmetric key from server and decrypt it to 'symetra'
+    encryptedSymetra = clientSocket.recv(1024)
+    clientPrivateKeyFile = f"{username}_private.pem"
+    clientPrivateKey = loadClientPrivateKey(clientPrivateKeyFile)
+
+    sym_key = decryptWithSymKey(encryptedSymetra, clientPrivateKey)
+
+    #encryptedMessage = encrypt('OK', sym_key)
+    #clientSocket.send(encryptedMessage)
+    
+    return clientSocket, sym_key
+# end authenticateWithServer()
 
 
 def main():
@@ -320,8 +332,12 @@ def main():
     '''
     try:
         # call a helper function to authenticate to the server
-    
         clientSocket, sym_key = authenticateWithServer()
+
+        # receiving data from Server.py for a welcome message
+        print()
+        serverMessage = clientSocket.recv(1024).decode()
+        print(serverMessage)
 
         while True:
             # receive the  server's menu options
@@ -330,7 +346,6 @@ def main():
             userChoice = input(menu)
 
             # gets, encrypts and sends the user's choice to the server
-            # TO DO: Encrypt userChoice with acquired symetra key [DELETE COMMENT ONCE DONE]
             encryptedChoice = encrypt(userChoice, sym_key)
             clientSocket.send(encryptedChoice)
             if(userChoice=='1'):
