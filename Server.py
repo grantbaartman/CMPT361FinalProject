@@ -36,11 +36,13 @@ def generateSymmetricKey():
     '''
     Purpose: Generate a symmetric key for encryption using AES with a key length of 256 bits.
     Parameter: None
-    Return: sym_key - The generated symmetric key
+    Return: symKey - The generated symmetric key
     '''
     # Generate a random symmetric key using AES with a key length of 256 bits
-    sym_key = get_random_bytes(32)  # 256 bits key length
-    return sym_key
+    symKey = get_random_bytes(32)  # 256 bits key length
+    return symKey
+# end generateSymmetricKey()
+
 
 def encryptMessage(message, publicKey):
     '''
@@ -226,13 +228,13 @@ def createEmail(clientSocket,serverPubKey,clientpubkey):
     encrypted_email=clientSocket.recv(4096)
     decrypted_email=decipherMessage(encrypted_email,clientpubkey)
     
-    process_email(decrypted_email)
+    processEmail(decrypted_email)
    
     clientSocket.sendall(b"Email received by the server.")
-
-
 # end createEmail()
-def process_email(email_object):
+    
+
+def processEmail(email_object):
     '''
     Parameter: The email json object that's sent from the client side
     purpose: Extract email info, print it to server side, and save the emails to text file 
@@ -245,11 +247,12 @@ def process_email(email_object):
     title=email_object["title"]
     length=email_object["content_length"]
     contents=email_object["message_contents"]
+
     # The time and date of receiving the message, add  it to the email object
     timestamp = d.now().strftime("%Y-%m-%d %H:%M:%S")
     for destinations in destination:
         destin+=f"{destinations} "
-        
+    # end for loop
 
     #print the details of the email 
     print(f"An email from {sender} is sent to {destin} ")
@@ -261,14 +264,16 @@ def process_email(email_object):
     #added time stamp to the new email object
 
     for new_des in destination:
-        save_email(sender,new_des,title,email_object)
+        saveEmail(sender,new_des,title,email_object)
         # For each destination send email
+    # end for loop
+# end processEmail()
+        
 
-def save_email(sender,destination,title,email_object):
+def saveEmail(sender,destination,title,email_object):
     destin_dir = os.path.join("client_emails", destination)
     # create a new folder, that contains the users
     os.makedirs(destin_dir, exist_ok=True)
-
 
     filename=f"{sender}_{title}.txt"
     # creates a file  that tracks for each user email
@@ -276,9 +281,10 @@ def save_email(sender,destination,title,email_object):
     with open(added_file,'w') as file:
         # write json object to newly created file
         json.dump(email_object,file)
-
+    # end with()
+        
     print(f"Email has been sent successfully to {destination}\n")
-
+# end saveEmail()
 
 
 
@@ -290,44 +296,46 @@ def displayEmail(clientSocket, serverPubKey, clientpubkey):
     Return: none
     '''
     # send the client a message
-    encrypted_message=encryptMessage("the server request email index",serverPubKey)
+    encrypted_message = encryptMessage("the server request email index",serverPubKey)
     clientSocket.send(encrypted_message)
     
     # recieve and decrypt the clients message then process req
-    encrypted_email=clientSocket.recv(4096)
-    decrypted_email=decipherMessage(encrypted_email,clientpubkey)
+    encrypted_email = clientSocket.recv(4096)
+    decrypted_email = decipherMessage(encrypted_email,clientpubkey)
     
-    email_view = get_email(decrypted_email)
+    email_view = getEmail(decrypted_email)
     encrypted_message = encrypted_message(email_view, serverPubKey)
     clientSocket.send(encrypted_email)
 # end displayEmail()
 
-def get_email(email_request):
+
+def getEmail(emailReq):
     """
     Purpose: Process the email request then send the client the email, assumers
-             correct email_request contains valid information.
-    Parameter: email_request
-    Return: none
+             correct emailReq contains valid information.
+    Parameter: emailReq
+    Return: emailDate
     """
 
-    client_box = email_request["sender"]
-    email_index = email_request["emailIndex"]
+    clientBox = emailReq["sender"]
+    emailIndex = emailReq["emailIndex"]
 
     # need the clients username, and email index
-    destin_dir = os.path.join("client_emails", client_box)
+    destinDIR = os.path.join("client_emails", clientBox)
     
     # List all .txt files in the user's directory
-    email_files = \
-        [file for file in os.listdir(destin_dir) if file.endswith('.txt')]
+    emailFiles = \
+        [file for file in os.listdir(destinDIR) if file.endswith('.txt')]
     
-    selected_email = email_files[email_index - 1]  # correct index for file
-    email_path = os.path.join(destin_dir, selected_email)
+    selectedMail = emailFiles[emailIndex - 1]  # correct index for file
+    emailPath = os.path.join(destinDIR, selectedMail)
 
-    with open(email_path, 'r') as email:
-        email_data = json.load(email)
-
-    return email_data
-    
+    with open(emailPath, 'r') as email:
+        emailDate = json.load(email)
+    # end with
+        
+    return emailDate
+# end getEmail()
 
 
 def displayInbox(clientSocket, sym_key, client_username):
@@ -383,9 +391,10 @@ def displayInbox(clientSocket, sym_key, client_username):
             print(f"Inbox emails sent to {client_username}.")
         else:
             print("Error: Client acknowledgment not received or invalid.")
+        # end if statement
     except Exception as e:
         print("Error:", e)
-
+    # end try & accept
 # end displayInbox()  
 
 
@@ -397,57 +406,61 @@ def handleClient(clientSocket, addr):
                addr - client address
     Return: none
     '''
+    print(" TEST MESSAGE: IM HERE")
+
     # prints the IP address of the client trying to connect
     hostname = socket.gethostname()
     address = socket.gethostbyname(hostname)
     
-    IP = clientSocket.recv(1024).decode()
+    userIP = clientSocket.recv(1024).decode()
 
-    if IP == address:
+    print(" TEST MESSAGE: IM HERE 2")
+
+    if (userIP == address):
         print(f">> Connection established with {addr}")
     else:
-        clientSocket.send("Wrong IP Address".encode())
+        clientSocket.send(">> Wrong IP Address".encode())
         clientSocket.close()
-
-
+    # end if statement
     
+    print(" TEST MESSAGE: IM HERE AFTER CHECKING ADDRESS")
 
     # load server's public key and client keys
     serverPubKey = loadServerPublicKey()
+    print(" TEST MESSAGE: IM HERE AFTER GENERATING SERVER PUBLIC KEY")
     clientPubKeys = loadClientPublicKey()
+
+    print(" TEST MESSAGE: IM HERE AFTER GENERATING PUBLIC KEYS")
 
     # sending welcome message and receiving user's credentials
     serverWelcomeMessage = ">>> Welcome to the Email Server <<<\n"
     clientSocket.send(serverWelcomeMessage.encode())
 
-    # TO DO: Receive encrypted username and password from client [DELETE COMMENT ONCE DONE]
-    #        Authenticate the user by accessing the file with all clients' username and passwords [DELETE COMMENT ONCE DONE]
-    #        Code a successful message that the connection was accepted and a key was generated for the client [DELETE COMMENT ONCE DONE]
-    #        While loop will be inside if statement if the user's authentication is valid (?) [DELETE COMMENT ONCE DONE]
-
     # receives username and password from Client.py
     username = clientSocket.recv(1024).decode()
+
     password = clientSocket.recv(1024).decode()
 
-    # checks if the user is authenticated
+    print(" TEST MESSAGE: IM HERE AFTER RECEIVING USERNAME AND PASSWORD")
+
+    # checks if the user is authenticated by calling a helper function
     userINFO = loadUserInfo()
     if (username in userINFO and userINFO[username] == password):
         clientSocket.send(">> Authenticated".encode())
         print(f">> User {username} authenticated!")
 
         # Generate a symmetric key for the client
-        sym_key = generateSymmetricKey()
+        symKey = generateSymmetricKey()
 
         # Send the symmetric key encrypted with the client's public key
-        encrypted_sym_key = encryptMessage(sym_key, clientPubKeys[username])
-        clientSocket.send(encrypted_sym_key)
+        encryptedSymKey = encryptMessage(symKey, clientPubKeys[username])
+        clientSocket.send(encryptedSymKey)
 
         # Print a message indicating the connection is accepted and a symmetric key is generated for the client
         print(f"Connection Accepted and Symmetric Key Generated for client: {username}")
 
-
         # receive email message NOT WORKING
-        email_message = clientSocket.recv(1024).decode()
+        emailMSG = clientSocket.recv(1024).decode()
 
         # store email in user's folder NOT WORKING
         userFolder = os.path.join(os.getcwd(), username)
@@ -455,14 +468,14 @@ def handleClient(clientSocket, addr):
             os.makedirs(userFolder)
         # end if statement
         with open(os.path.join(userFolder, "inbox.txt"), "a") as file:
-            file.write(email_message + "\n")
+            file.write(emailMSG + "\n")
         # end with
             
         # Encrypt email using client's public key
         if (username in clientPubKeys):
-            encrypted_message = e(email_message.encode(), clientPubKeys[username])
+            encryptedMSG = encryptMessage(emailMSG.encode(), clientPubKeys[username])
             with open(os.path.join(userFolder, "encrypted_inbox.txt"), "ab") as file:
-                file.write(encrypted_message)
+                file.write(encryptedMSG)
             print(f">> Email received from {username} and stored securely.")
         else:
             print(f">> Public key not found for user {username}. Email stored without encryption.")
