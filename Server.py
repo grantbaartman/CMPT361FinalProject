@@ -149,27 +149,20 @@ def authenticateUser(username, password):
 # end authenticateUser()
 
 
-# THIS MAY BE FOR CLIENT.PY PLEASE CTRL + X IF SO OR CHANGE CODE
-def loadClientPublicKey():
+def loadClientPublicKey(clientPublicKeyFile):
     '''
-    Purpose: a helper function that checks if the user is in the file for
-             authorized users along with their password
-    Parameter: username - a string that holds the username
-               password - a string that holds the password
-    Return: a boolean that indicates if the user is authorized or not
+    Purpose: Load a private key from a file
+    Parameter: clientPublicKeyFile - the file path of the private key
+    Return: clientPublicKeyFile - the loaded private key object
     '''
-    # initialize a dictionary to hold the information
-    client_public_keys = {}
-    # saves information of known clients and their passwords
-    users = loadUserInfo()
-
-    # loops until every client is analyzed
-    for username in users:
-        public_key_path = f"{username}_public.pem"
-        if os.path.exists(public_key_path):
-            with open(public_key_path, 'rb') as f:
-                client_public_keys[username] = RSA.import_key(f.read())
-    return client_public_keys
+    try:
+        with open(clientPublicKeyFile, "r") as file:
+            publicKey = RSA.import_key(file.read())
+        return publicKey
+    except Exception as e:
+        print(f">> Error loading public key from file {clientPublicKeyFile}: {e}")
+        return None
+    # end try & accept
 # end loadClientPublicKey()
 
 
@@ -180,9 +173,26 @@ def loadServerPublicKey():
     Return: serverPublicKey - the public key of the server
     '''
     try:
-        with open("server_public.pem", 'rb') as file:
-            serverPublicKey = RSA.import_key(file.read())
-        # end with
+        with open("server_public.pem", 'r') as file:
+            keyData = RSA.import_key(file.read())
+            print(keyData)
+            # checks if the file is not empty
+            if keyData.strip():
+                try:
+                    serverPublicKey = RSA.import_key(keyData)
+                except ValueError:
+                    # when file contains invalid key data, generate a new key
+                    print(">> Invalid server public key data. Generating new server's public key...")
+                    serverPublicKey = RSA.generate(2048)
+                    # save the new generated key
+                    saveServerPublicKey(serverPublicKey)
+            else:
+                # if the file is empty, generate a new key
+                print(">> Empty server public key file. Generating new server's public key...")
+                serverPublicKey = RSA.generate(2048)
+                # save the new generated key
+                saveServerPublicKey(serverPublicKey)
+            # end if statement
     except FileNotFoundError:
         print(">> Server public key file not found. Generating server's public key...")
         # calls the RSA generation to generate a key
@@ -210,6 +220,7 @@ def saveServerPublicKey(publicKey):
     # end try & accept
 # end saveServerPublicKey()
         
+
 def startCreatingUserKeys():
     '''
     Purpose: a helper function that creates a public and private key for all 5
@@ -244,7 +255,6 @@ def startCreatingUserKeys():
         
     print(">> Public and private keys saved as .pem files.")
 # end startCreatingUserKeys()
-
 
 
 def checkPemFilesExist():
@@ -472,7 +482,7 @@ def handleClient(clientSocket, addr):
     print(" TEST MESSAGE: IM HERE 2")
 
     # checks if the user correctly typed the correct local IP address 
-    if (userIP == address):
+    if (userIP == address) or (userIP == "localhost"):
         print(f">> Connection established with {addr}")
     else:
         clientSocket.send(">> Wrong IP Address".encode())
@@ -502,7 +512,6 @@ def handleClient(clientSocket, addr):
 
     # receives username and password from Client.py
     username = clientSocket.recv(1024).decode()
-
     password = clientSocket.recv(1024).decode()
 
     print(" TEST MESSAGE: IM HERE AFTER RECEIVING USERNAME AND PASSWORD")
