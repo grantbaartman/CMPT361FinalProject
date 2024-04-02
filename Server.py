@@ -47,28 +47,51 @@ def generateSymmetricKey():
 def encryptMessage(message, publicKey):
     '''
     Purpose: a helper function that uses assymetrical encryption to secure the
-             message
+             message. It uses the client's public key to encrypt the message
     Parameter: message - a string that holds the text data
                publicKey - a string that holds the public key to the server
     Return: serverPublicKey - the public key of the server
     '''
-    # saves the public key to a variable, encrypt the encrypted message, and
-    # returns it
+    # check if the message and public key are not None
+    if (message is None or publicKey is None):
+        print(">> Something went wrong! Neither the message nor the user's key is present.")
+        return None
+    # end if statement
+
+    # create a cipher object with the public key
     cipher = PKCS1_OAEP.new(publicKey)
+
+    # encrypt the message and return the encrypted data
     return cipher.encrypt(message)
 # end encryptMessage()
 
 
-def decipherMessage(encryptedMSG, privateKey):
+def decipherMessage(encryptedMSG):
     '''
-    Purpose: a helper function that uses assymetrical decryption to decipher the
-             message
+    Purpose: a helper function that uses the server's private key to decipher
+             the message
     Parameter: encryptedMSG - a string that holds the encrypted text data
-               privateKey - a string that holds the private key to the server
-    Return: serverPublicKey - the public key of the server
+    Return: decipheredMSG - a deciphered message from client
     '''
-    cipher = PKCS1_OAEP.new(privateKey)
-    return cipher.decrypt(encryptedMSG)
+    try:
+        # load the server's private key
+        with open("server_private.pem", "r") as file:
+            privateKey = RSA.import_key(file.read())
+        # end with
+            
+        # create cipher object with private key
+        cipher = PKCS1_OAEP.new(privateKey)
+        # decrypt the message
+        decipheredMSG = cipher.decrypt(encryptedMSG)
+
+        # returns the deciphered message
+        return decipheredMSG.decode()
+    except FileNotFoundError:
+        print(f">> Error: Private key not found.")
+    except Exception as e:
+        print(f">> Error decrypting client message: {e}")
+        return None
+    # end try & accept
 # end decipherMessage()
 
 
@@ -149,67 +172,108 @@ def authenticateUser(username, password):
 # end authenticateUser()
 
 
-# THIS MAY BE FOR CLIENT.PY PLEASE CTRL + X IF SO OR CHANGE CODE
 def loadClientPublicKey():
     '''
-    Purpose: a helper function that checks if the user is in the file for
-             authorized users along with their password
-    Parameter: username - a string that holds the username
-               password - a string that holds the password
-    Return: a boolean that indicates if the user is authorized or not
+    Purpose: Load a private key from a file
+    Parameter: none
+    Return: clientPublicKeys - a dictionary that holds the the public keys of
+                               all known users
     '''
     # initialize a dictionary to hold the information
-    client_public_keys = {}
+    clientPublicKeys = {}
     # saves information of known clients and their passwords
     users = loadUserInfo()
 
     # loops until every client is analyzed
     for username in users:
-        public_key_path = f"{username}_public.pem"
-        if os.path.exists(public_key_path):
-            with open(public_key_path, 'rb') as f:
-                client_public_keys[username] = RSA.import_key(f.read())
-    return client_public_keys
+        # concatenates the user's name to the filepath
+        publicKeyPath = f"{username}_public.pem"
+
+        if os.path.exists(publicKeyPath):
+            try:
+                with open(publicKeyPath, 'r') as f:
+                    clientPublicKeys[username] = RSA.import_key(f.read())
+                # end with
+            except (FileNotFoundError, ValueError) as e:
+                print(f">> Error loading public key for user '{username}': {e}")
+            # end try & accept
+        else:
+            print(f"\t>> Public key file not found for user '{username}'.")
+        # end if statement
+    return clientPublicKeys
 # end loadClientPublicKey()
 
 
-def loadServerPublicKey():
+def loadServerKeys():
     '''
-    Purpose: a helper function that loads the public key of the server
+    Purpose: a helper function that loads the public and private keys for the
+             Server. The Keys must be a matching pair
     Parameter: username - a string that holds the username given
     Return: serverPublicKey - the public key of the server
     '''
     try:
-        with open("server_public.pem", 'rb') as file:
-            serverPublicKey = RSA.import_key(file.read())
+        # attempting to load both the server's public and private keys
+        with open("server_private.pem", 'r') as file:
+            privateKey = RSA.import_key(file.read())
+        # end with
+        with open("server_public.pem", 'r') as file:
+            publicKey = RSA.import_key(file.read())
         # end with
     except FileNotFoundError:
-        print(">> Server public key file not found. Generating server's public key...")
-        # calls the RSA generation to generate a key
-        serverPublicKey = RSA.generate(2048)
+        print(">> Server's keys are not found. Generating server's keys...")
+        
+        # generate a new key if the loaded key is invalid
+        serverKey = RSA.generate(2048)
+        # extract the keys as bytes
+        publicKey = serverKey.publickey().export_key()
+        privateKey = serverKey.export_key()
+
         # calls a helper function to save the generatedServerPublicKey
-        saveServerPublicKey(serverPublicKey)
+        saveServerKeys(publicKey, privateKey)
+        print(">> New server key-pair generated and saved.")
+    except ValueError as e:
+        print(f">> Error loading server key pair: {e}")
+        print(">> Server's keys are not found. Generating server's keys...")
+
+        # generate a new key if the loaded key is invalid
+        serverKey = RSA.generate(2048)
+        publicKey = serverKey.publickey().export_key()
+        privateKey = serverKey.export_key()
+        
+        # save the generated keys
+        saveServerKeys(publicKey, privateKey)
+        print(">> New server public key generated and saved.")
     # end try & accept
         
-    return serverPublicKey
+    return publicKey, privateKey
 # end loadServerPublicKey()
 
 
-def saveServerPublicKey(publicKey):
+def saveServerKeys(publicKey, privateKey):
     '''
     Purpose: a helper function that saves the generated server public key
-    Parameter: publicKey - a string that is the server key
+    Parameter: publicKey - a string that is the server public key
+               privateKey - a string that is the server private key
     Return: none
     '''
     try:
+        # saves the server's public key to .pem file
         with open("server_public.pem", 'wb') as file:
-            file.write(publicKey.export_key() )
-        print(">> Server's public key saved as 'server_public.pem'")
+            file.write(publicKey)
+        # end with
+        print("\t>> Server's public key saved as 'server_public.pem'")
+
+        # saves the server's private key to .pem file
+        with open("server_private.pem", 'wb') as file:
+            file.write(privateKey)
+        # end with
+        print("\t>> Server's private key saved as 'server_private.pem'")
     except Exception as e:
-        print(">> Error:", e)
+        print(">> Error in saving Server keys:", e)
     # end try & accept
 # end saveServerPublicKey()
         
+
 def startCreatingUserKeys():
     '''
     Purpose: a helper function that creates a public and private key for all 5
@@ -244,7 +308,6 @@ def startCreatingUserKeys():
         
     print(">> Public and private keys saved as .pem files.")
 # end startCreatingUserKeys()
-
 
 
 def checkPemFilesExist():
@@ -442,7 +505,7 @@ def displayInbox(clientSocket, sym_key, client_username):
 
         # Receive acknowledgment from the client
         acknowledgment = clientSocket.recv(1024).decode()
-        if acknowledgment == "OK":
+        if (acknowledgment == "OK"):
             print(f"Inbox emails sent to {client_username}.")
         else:
             print("Error: Client acknowledgment not received or invalid.")
@@ -453,30 +516,28 @@ def displayInbox(clientSocket, sym_key, client_username):
 # end displayInbox()  
 
 
-def handleClient(clientSocket, addr):
+def handleClient(clientUsingServerSocket, addr):
     '''
     Purpose: Handles each client connection individually while calling helper
              functions
-    Parameter: clientSocket - socket object for client communication
+    Parameter: clientUsingServerSocket - socket object for client communication
                addr - client address
     Return: none
     '''
-    print(" TEST MESSAGE: IM HERE")
 
-    # prints the IP address of the client trying to connect
+    # gets the IP address of the client's machine
     hostname = socket.gethostname()
     address = socket.gethostbyname(hostname)
-    
-    userIP = clientSocket.recv(1024).decode()
-
-    print(" TEST MESSAGE: IM HERE 2")
+    # receives information from client about the IP
+    userIP = clientUsingServerSocket.recv(1024).decode()
 
     # checks if the user correctly typed the correct local IP address 
-    if (userIP == address):
+    if (userIP == address) or (userIP == "localhost"):
         print(f">> Connection established with {addr}")
+        clientUsingServerSocket.send(">> Connection established!".encode())
     else:
-        clientSocket.send(">> Wrong IP Address".encode())
-        clientSocket.close()
+        clientUsingServerSocket.send(">> Wrong IP Address".encode())
+        clientUsingServerSocket.close()
     # end if statement
     
     # check if .pem files for the keys of the known users exist
@@ -487,86 +548,87 @@ def handleClient(clientSocket, addr):
         print(">> Public and private key files already exist for all users.")
     # end if statement
         
-    print(" TEST MESSAGE: IM HERE AFTER CHECKING IP ADDRESS")
-
-    # load server's public key and client keys
-    serverPubKey = loadServerPublicKey()
-    print(" TEST MESSAGE: IM HERE AFTER GENERATING SERVER PUBLIC KEY")
+    # load server's public key and private key
+    serverPubKey, serverPrivKey = loadServerKeys()
+    # load client's keys; clientPubKeys is a dictionary
     clientPubKeys = loadClientPublicKey()
 
-    print(" TEST MESSAGE: IM HERE AFTER GENERATING PUBLIC KEYS")
-
-    # sending welcome message and receiving user's credentials
-    serverWelcomeMessage = ">>> Welcome to the Email Server <<<\n"
-    clientSocket.send(serverWelcomeMessage.encode())
-
     # receives username and password from Client.py
-    username = clientSocket.recv(1024).decode()
+    username = clientUsingServerSocket.recv(1024)
+    password = clientUsingServerSocket.recv(1024)
 
-    password = clientSocket.recv(1024).decode()
+    # decodes the username and password with 'server_public' key
+    username = decipherMessage(username)
+    password = decipherMessage(password)
 
-    print(" TEST MESSAGE: IM HERE AFTER RECEIVING USERNAME AND PASSWORD")
-
-    # checks if the user is authenticated by calling a helper function
+    # loading all known users and their passwords [DICTIONARY]
     userINFO = loadUserInfo()
+    # for user in userINFO:
+    #     print(f"\t>>> {user} and their password: {userINFO[user]}")
+    # # end for loop
+        
+    # checks if the user is authenticated by calling a helper function
     if (username in userINFO and userINFO[username] == password):
-        clientSocket.send(">> Authenticated".encode())
-        print(f">> User {username} authenticated!")
+        clientUsingServerSocket.send(">> Authenticated".encode())
+        print(f"\n>> User {username} authenticated!")
 
         # Generate a symmetric key for the client
         symKey = generateSymmetricKey()
 
         # Send the symmetric key encrypted with the client's public key
         encryptedSymKey = encryptMessage(symKey, clientPubKeys[username])
-        clientSocket.send(encryptedSymKey)
+        clientUsingServerSocket.send(encryptedSymKey)
+        print(">> The server sent the encrypted symmetrical key")
 
         # Print a message indicating the connection is accepted and a symmetric key is generated for the client
-        print(f"Connection Accepted and Symmetric Key Generated for client: {username}")
+        print(f">> Connection Accepted and Symmetric Key Generated for client: {username}")
 
-        # receive email message NOT WORKING
-        emailMSG = clientSocket.recv(1024).decode()
+        # # receive email message NOT WORKING
+        # emailMSG = clientUsingServerSocket.recv(1024).decode()
 
-        # store email in user's folder NOT WORKING
-        userFolder = os.path.join(os.getcwd(), username)
-        if (not os.path.exists(userFolder) ):
-            os.makedirs(userFolder)
-        # end if statement
-        with open(os.path.join(userFolder, "inbox.txt"), "a") as file:
-            file.write(emailMSG + "\n")
-        # end with
+        # # store email in user's folder NOT WORKING
+        # userFolder = os.path.join(os.getcwd(), username)
+        # if (not os.path.exists(userFolder) ):
+        #     os.makedirs(userFolder)
+        # # end if statement
+        # with open(os.path.join(userFolder, "inbox.txt"), "a") as file:
+        #     file.write(emailMSG + "\n")
+        # # end with
             
-        # Encrypt email using client's public key
-        if (username in clientPubKeys):
-            encryptedMSG = encryptMessage(emailMSG.encode(), clientPubKeys[username])
-            with open(os.path.join(userFolder, "encrypted_inbox.txt"), "ab") as file:
-                file.write(encryptedMSG)
-            print(f">> Email received from {username} and stored securely.")
-        else:
-            print(f">> Public key not found for user {username}. Email stored without encryption.")
-        # end if statement
+        # # encrypt email using client's public key
+        # if (username in clientPubKeys):
+        #     encryptedMSG = encryptMessage(emailMSG.encode(), clientPubKeys[username])
+        #     with open(os.path.join(userFolder, "encrypted_inbox.txt"), "ab") as file:
+        #         file.write(encryptedMSG)
+        #     print(f">> Email received from {username} and stored securely.")
+        # else:
+        #     print(f">> Public key not found for user {username}. Email stored without encryption.")
+        # # end if statement
     else:
-        clientSocket.send(">> Authentication failed!".encode())
+        clientUsingServerSocket.send(">> Authentication failed!".encode())
         print(f"\t>> Authentication failed for {username}. Connection closed.")
     # end if statement
         
+    # sending welcome message and receiving user's credentials
+    serverWelcomeMessage = ">>> Welcome to the Email Server <<<\n"
+    clientUsingServerSocket.send(serverWelcomeMessage.encode())
+
     # main communication loop to handle the client
     while True:
         try:
             # a string that holds the menu
             menu = ">> Select an operation:\n\t1) Create and send an email\n\t2) Display the inbox list\n\t3) Display the email contents\n\t4) Terminate the connection\n>> User's choice: "
 
-            # TO DO: Encrypt 'menu' and send it to Client.py [DELETE COMMENT ONCE DONE]
             encryptedMenu = ""
-            clientSocket.send(encryptedMenu)
+            clientUsingServerSocket.send(encryptedMenu)
 
             # receives an encrypted choice from the client
-            encryptedChoice = clientSocket.recv(1024)
-            # TO DO: Decrypt 'encryptedChoice' and process it [DELETE COMMENT ONCE DONE]
+            encryptedChoice = clientUsingServerSocket.recv(1024)
             choice = ""
 
             if (choice == '1'):
                 # Handle sending email
-                createEmail(clientSocket,serverPubKey,clientPubKeys[username])
+                createEmail(clientUsingServerSocket,serverPubKey,clientPubKeys[username])
             elif (choice == '2'):
                 # Handle displaying inbox list
                 displayInbox()
@@ -619,11 +681,11 @@ def main():
     
     while True:
         # accept a connection from a client
-        clientSocket, addr = serverSocket.accept()
+        clientUsingServerSocket, addr = serverSocket.accept()
 
         # create a new thread to handle the client
         try:
-            handleClient(clientSocket, addr)
+            handleClient(clientUsingServerSocket, addr)
         except socket.timeout:
             print(">> No clients attempting to connect...")
 
