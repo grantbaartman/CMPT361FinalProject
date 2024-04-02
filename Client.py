@@ -81,7 +81,6 @@ def loadClientPrivateKey(clientPrivateKeyFile):
 # end lodClientPrivateKey()
 
 
-
 def decryptSymmetricKey(encryptedSymmetricKey, clientPrivateKey):
     '''
     Purpose: Decrypt the encrypted symmetric key received from the server
@@ -188,7 +187,6 @@ def sendEmail(clientSocket, sym_key):
     
 
 def viewEmail(clientSocket, sym_key):
-
     client_username = input("Enter your username: ")
     validIndex = False
 
