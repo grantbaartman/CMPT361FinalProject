@@ -616,14 +616,14 @@ def handleClient(clientUsingServerSocket, addr):
 
             #encryptedMenu = encryptMessage(menu.encode(), clientPubKeys[username])
     clientUsingServerSocket.send(menu.encode())
-
             # receives an encrypted choice from the client
-    choice = clientUsingServerSocket.recv(1024)
     # main communication loop to handle the client
     while True:
         try:
+
             # a string that holds the menu
             
+            choice = clientUsingServerSocket.recv(1024)
 
             if (choice == '1'):
                 # Handle sending email
