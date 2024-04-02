@@ -174,31 +174,41 @@ def loadServerPublicKey():
     '''
     try:
         with open("server_public.pem", 'r') as file:
-            keyData = RSA.import_key(file.read())
-            print(keyData)
-            # checks if the file is not empty
-            if keyData.strip():
-                try:
-                    serverPublicKey = RSA.import_key(keyData)
-                except ValueError:
-                    # when file contains invalid key data, generate a new key
-                    print(">> Invalid server public key data. Generating new server's public key...")
-                    serverPublicKey = RSA.generate(2048)
-                    # save the new generated key
-                    saveServerPublicKey(serverPublicKey)
-            else:
-                # if the file is empty, generate a new key
-                print(">> Empty server public key file. Generating new server's public key...")
-                serverPublicKey = RSA.generate(2048)
-                # save the new generated key
-                saveServerPublicKey(serverPublicKey)
-            # end if statement
+            serverPublicKey = RSA.import_key(file.read())
+
+            # # checks if the file is not empty
+            # if keyData:
+            #     try:
+            #         serverPublicKey = RSA.import_key(keyData)
+            #     except ValueError:
+            #         # when file contains invalid key data, generate a new key
+            #         print(">> Invalid server public key data. Generating new server's public key...")
+            #         serverPublicKey = RSA.generate(2048)
+            #         # save the new generated key
+            #         saveServerPublicKey(serverPublicKey)
+            # else:
+            #     # if the file is empty, generate a new key
+            #     print(">> Empty server public key file. Generating new server's public key...")
+            #     serverPublicKey = RSA.generate(2048)
+            #     # save the new generated key
+            #     saveServerPublicKey(serverPublicKey)
+            # # end if statement
     except FileNotFoundError:
         print(">> Server public key file not found. Generating server's public key...")
         # calls the RSA generation to generate a key
         serverPublicKey = RSA.generate(2048)
         # calls a helper function to save the generatedServerPublicKey
         saveServerPublicKey(serverPublicKey)
+    except ValueError as e:
+        print(f">> Error loading server public key: {e}")
+        print(">> Generating new server's public key...")
+
+        # generate a new key if the loaded key is invalid
+        serverPublicKey = RSA.generate(2048)
+
+        # save the generated key
+        saveServerPublicKey(serverPublicKey)
+        print(">> New server public key generated and saved.")
     # end try & accept
         
     return serverPublicKey
