@@ -210,8 +210,64 @@ def saveServerPublicKey(publicKey):
     # end try & accept
 # end saveServerPublicKey()
         
+def startCreatingUserKeys():
+    '''
+    Purpose: a helper function that creates a public and private key for all 5
+             known users. This function is similar to startKnownClients()
+    Parameter: none
+    Return: none
+    '''
+    # define the names of the known users
+    knownUsers = ["John", "David", "Lucy", "Dorio", "Bob"]
 
-# TO DO: Code that loads Server.py's private key [DELETE COMMENT ONCE DONE]
+    # loops until the known users are done
+    for username in knownUsers:
+        # generate a key pair for the user
+        keyPair = RSA.generate(2048)
+        publicKey = keyPair.publickey().export_key()
+        privateKey = keyPair.export_key()
+
+        # save the public key to a .pem file
+        publicKeyFilename = f"{username}_public.pem"
+        with open(publicKeyFilename, 'wb') as f:
+            f.write(publicKey)
+        # end with
+            
+        # save the private key to a .pem file
+        privateKeyFilename = f"{username}_private.pem"
+        with open(privateKeyFilename, 'wb') as f:
+            f.write(privateKey)
+        # end with
+            
+        print(f"\t>>Key pair generated for user '{username}'")
+    # end for loop
+        
+    print(">> Public and private keys saved as .pem files.")
+# end startCreatingUserKeys()
+
+
+
+def checkPemFilesExist():
+    '''
+    Purpose: Check if .pem files exist for each user
+    Parameter: None
+    Return: True if .pem files exist for all users, False otherwise
+    '''
+    # define the names of the known users
+    knownUsers = ["John", "David", "Lucy", "Dorio", "Bob"]
+
+    # loops and checks if .pem files exist for each user
+    for username in knownUsers:
+        public_key_filename = f"{username}_public.pem"
+        private_key_filename = f"{username}_private.pem"
+
+        # check if both public and private key files exist for the user
+        if not (os.path.exists(public_key_filename) and os.path.exists(private_key_filename)):
+            return False
+        # end if statement
+    # end for loop
+    return True
+# end checkpemFilesExist()
 
 
 def createEmail(clientSocket,serverPubKey,clientpubkey):
@@ -285,7 +341,6 @@ def saveEmail(sender,destination,title,email_object):
         
     print(f"Email has been sent successfully to {destination}\n")
 # end saveEmail()
-
 
 
 def displayEmail(clientSocket, serverPubKey, clientpubkey):
@@ -416,6 +471,7 @@ def handleClient(clientSocket, addr):
 
     print(" TEST MESSAGE: IM HERE 2")
 
+    # checks if the user correctly typed the correct local IP address 
     if (userIP == address):
         print(f">> Connection established with {addr}")
     else:
@@ -423,7 +479,15 @@ def handleClient(clientSocket, addr):
         clientSocket.close()
     # end if statement
     
-    print(" TEST MESSAGE: IM HERE AFTER CHECKING ADDRESS")
+    # check if .pem files for the keys of the known users exist
+    if not checkPemFilesExist():
+        # If .pem files do not exist for all users, create them
+        startCreatingUserKeys()
+    else:
+        print(">> Public and private key files already exist for all users.")
+    # end if statement
+        
+    print(" TEST MESSAGE: IM HERE AFTER CHECKING IP ADDRESS")
 
     # load server's public key and client keys
     serverPubKey = loadServerPublicKey()
