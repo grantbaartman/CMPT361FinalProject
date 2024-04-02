@@ -314,12 +314,12 @@ def authenticateWithServer():
     clientPrivateKeyFile = f"{username}_private.pem"
     clientPrivateKey = loadClientPrivateKey(clientPrivateKeyFile)
 
-    sym_key = decryptWithSymKey(encryptedSymetra, clientPrivateKey)
+    #sym_key = decryptWithSymKey(encryptedSymetra, clientPrivateKey)
 
     #encryptedMessage = encrypt('OK', sym_key)
     #clientSocket.send(encryptedMessage)
     
-    return clientSocket, sym_key
+    return clientSocket, clientPrivateKey
 # end authenticateWithServer()
 
 
@@ -332,24 +332,24 @@ def main():
     '''
     try:
         # call a helper function to authenticate to the server
-        clientSocket, sym_key = authenticateWithServer()
+        clientSocket, clientPrivateKey = authenticateWithServer()
 
         # receiving data from Server.py for a welcome message
         print()
         serverMessage = clientSocket.recv(1024).decode()
         print(serverMessage)
+        menu = clientSocket.recv(1024)
+        userChoice = input(menu)
+        clientSocket.send(userChoice)
 
         while True:
             # receive the  server's menu options
-            encryptedMenu = clientSocket.recv(1024)
-            menu = decrypt(encryptedMenu, sym_key)
-            userChoice = input(menu)
-
+           
             # gets, encrypts and sends the user's choice to the server
-            encryptedChoice = encrypt(userChoice, sym_key)
-            clientSocket.send(encryptedChoice)
+            #encryptedChoice = encrypt(userChoice, clientPrivateKey)
+            #clientSocket.send(userChoice)
             if(userChoice=='1'):
-                sendEmail(clientSocket, sym_key)
+                sendEmail(clientSocket, clientPrivateKey)
                 return
             elif(userChoice == '3'):
                 viewEmail(clientSocket)

@@ -612,19 +612,18 @@ def handleClient(clientUsingServerSocket, addr):
     # sending welcome message and receiving user's credentials
     serverWelcomeMessage = ">>> Welcome to the Email Server <<<\n"
     clientUsingServerSocket.send(serverWelcomeMessage.encode())
+    menu = ">> Select an operation:\n\t1) Create and send an email\n\t2) Display the inbox list\n\t3) Display the email contents\n\t4) Terminate the connection\n>> User's choice: "
 
+            #encryptedMenu = encryptMessage(menu.encode(), clientPubKeys[username])
+    clientUsingServerSocket.send(menu.encode())
+
+            # receives an encrypted choice from the client
+    choice = clientUsingServerSocket.recv(1024)
     # main communication loop to handle the client
     while True:
         try:
             # a string that holds the menu
-            menu = ">> Select an operation:\n\t1) Create and send an email\n\t2) Display the inbox list\n\t3) Display the email contents\n\t4) Terminate the connection\n>> User's choice: "
-
-            encryptedMenu = ""
-            clientUsingServerSocket.send(encryptedMenu)
-
-            # receives an encrypted choice from the client
-            encryptedChoice = clientUsingServerSocket.recv(1024)
-            choice = ""
+            
 
             if (choice == '1'):
                 # Handle sending email
@@ -678,33 +677,35 @@ def main():
 
     # prints out a successful message the server has been initialized
     print(">> The server is ready to accept connections and is listening.")
-    
-    while True:
-        # accept a connection from a client
-        clientUsingServerSocket, addr = serverSocket.accept()
+    pid=os.fork()
+    if pid>0:
+        while True:
+            # accept a connection from a client
+            clientUsingServerSocket, addr = serverSocket.accept()
 
-        # create a new thread to handle the client
-        try:
-            handleClient(clientUsingServerSocket, addr)
-        except socket.timeout:
-            print(">> No clients attempting to connect...")
+            # create a new thread to handle the client
+            try:
+            
+                handleClient(clientUsingServerSocket, addr)
+            except socket.timeout:
+                print(">> No clients attempting to connect...")
 
-            # ask the user in the server for an action
-            serverAction = input(">> Do you want to continue waiting for connections? (Y/N): ").strip().lower()
+                # ask the user in the server for an action
+                serverAction = input(">> Do you want to continue waiting for connections? (Y/N): ").strip().lower()
 
-            # exit the server loop if user chooses to stop waiting
-            if (serverAction.lower() == 'n'):
-                print(">> Exiting server loop!")
-                break  
-            # end if stateemnt
-        except Exception as e:
-            print(f">> Error creating thread: {e}")
-        # end try & accept
-    # end while loop
-    
-    # closes the connection from the client
-    clientSocket.close()
-    print(">> Closing the datalink. Thank you for using the program")
+                # exit the server loop if user chooses to stop waiting
+                if (serverAction.lower() == 'n'):
+                    print(">> Exiting server loop!")
+                    break  
+                # end if stateemnt
+            except Exception as e:
+                print(f">> Error creating thread: {e}")
+            # end try & accept
+        # end while loop
+        
+        # closes the connection from the client
+        clientUsingServerSocket.close()
+        print(">> Closing the datalink. Thank you for using the program")
 # end main()
     
 if __name__ == "__main__":
