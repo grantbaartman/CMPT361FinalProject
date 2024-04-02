@@ -26,8 +26,21 @@ import socket
 import sys
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+from Crypto.Random import get_random_bytes
 from datetime import datetime as d
 
+
+def generateSymmetricKey():
+    '''
+    Purpose: Generate a symmetric key for encryption using AES with a key length of 256 bits.
+    Parameter: None
+    Return: sym_key - The generated symmetric key
+    '''
+    # Generate a random symmetric key using AES with a key length of 256 bits
+    sym_key = get_random_bytes(32)  # 256 bits key length
+    return sym_key
 
 def encryptMessage(message, publicKey):
     '''
@@ -317,13 +330,62 @@ def get_email(email_request):
     
 
 
-def displayInbox(clientSocket):
+def displayInbox(clientSocket, sym_key, client_username):
     '''
-    Purpose: a helper function that displays the context of the server's inbox
-             to the user
+    Purpose: Send the client inbox emails' information sorted by received time and date
     Parameter: clientSocket - socket object for client communication
+               sym_key - symmetric key for encryption
+               client_username - username of the requesting client
     Return: none
     '''
+    try:
+        # Path to the directory containing inbox emails for the requesting client
+        client_inbox_dir = os.path.join("client_emails", client_username)
+
+        # Check if the client's inbox directory exists
+        if not os.path.exists(client_inbox_dir):
+            # If the directory does not exist, send an empty inbox email list
+            inbox_emails = []
+        else:
+            # List all .txt files in the client's inbox directory
+            email_files = [file for file in os.listdir(client_inbox_dir) if file.endswith('.txt')]
+
+            # Initialize an empty list to store inbox email information
+            inbox_emails = []
+
+            # Iterate over each email file and extract relevant information
+            for email_file in email_files:
+                with open(os.path.join(client_inbox_dir, email_file), 'r') as email:
+                    email_data = json.load(email)
+                    inbox_emails.append({
+                        "index": inbox_emails.index(email_data) + 1,
+                        "sending_client": email_data["sender"],
+                        "date_time": email_data["Time"],
+                        "title": email_data["title"]
+                    })
+
+        # Sort inbox emails by received time and date
+        inbox_emails = sorted(inbox_emails, key=lambda x: x["date_time"])
+
+        # Prepare the message containing inbox email information
+        message = json.dumps(inbox_emails)
+
+        # Encrypt the message using AES symmetric encryption with the provided symmetric key
+        cipher = AES.new(sym_key, AES.MODE_CBC)
+        ciphertext = cipher.encrypt(pad(message.encode(), AES.block_size))
+
+        # Send the encrypted message to the client
+        clientSocket.send(ciphertext)
+
+        # Receive acknowledgment from the client
+        acknowledgment = clientSocket.recv(1024).decode()
+        if acknowledgment == "OK":
+            print(f"Inbox emails sent to {client_username}.")
+        else:
+            print("Error: Client acknowledgment not received or invalid.")
+    except Exception as e:
+        print("Error:", e)
+
 # end displayInbox()  
 
 
@@ -360,6 +422,17 @@ def handleClient(clientSocket, addr):
     if (username in userINFO and userINFO[username] == password):
         clientSocket.send(">> Authenticated".encode())
         print(f">> User {username} authenticated!")
+
+        # Generate a symmetric key for the client
+        sym_key = generateSymmetricKey()
+
+        # Send the symmetric key encrypted with the client's public key
+        encrypted_sym_key = encryptMessage(sym_key, clientPubKeys[username])
+        clientSocket.send(encrypted_sym_key)
+
+        # Print a message indicating the connection is accepted and a symmetric key is generated for the client
+        print(f"Connection Accepted and Symmetric Key Generated for client: {username}")
+
 
         # receive email message NOT WORKING
         email_message = clientSocket.recv(1024).decode()
