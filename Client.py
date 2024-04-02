@@ -338,9 +338,8 @@ def main():
         print()
         serverMessage = clientSocket.recv(1024).decode()
         print(serverMessage)
-        menu = clientSocket.recv(1024)
-        userChoice = input(menu)
-        clientSocket.send(userChoice)
+       
+
 
         while True:
             # receive the  server's menu options
@@ -348,6 +347,9 @@ def main():
             # gets, encrypts and sends the user's choice to the server
             #encryptedChoice = encrypt(userChoice, clientPrivateKey)
             #clientSocket.send(userChoice)
+            userChoice = input('Enter Choice')
+            clientSocket.send(userChoice)
+       
             if(userChoice=='1'):
                 sendEmail(clientSocket, clientPrivateKey)
                 return
